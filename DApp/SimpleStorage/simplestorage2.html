@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Simple Storage Dapp Sample</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" media="screen" href="https://cdnjs.cloudflare.com/ajax/libs/milligram/1.2.3/milligram.min.css" />
+    
+    <style>
+        body {
+            margin-left: 50px;
+        }
+        #storedData {font-size: 300%; margin-right: 10px;}
+        #newValue {width: 200px; margin-right: 10px; text-align: right}
+        #contractAddr {width: 500px; margin-right: 10px; text-align: left}
+    </style>
+</head>
+<body>
+    <h3>Simple Storage dApp Sample2</h3>
+    <ul>
+        <li>Contract Address: 
+            <input id="contractAddr" type="text">
+            <button onclick="setContractAddr()">Set Contract Address</button>
+        </li>
+        <li>My Account Address: <span id="accountAddr"></span></li>
+        <li>
+            The Valur saved to Contract <span id="storedData"></span>
+            <button onclick="getValue()">Refresh</button>(Current Block: <span id="lastBlock"></span>)
+        </li>
+        <li>
+            <input id="newValue" type="text"> <button onclick="setValue()">Save to New Value</button>
+            <div id="result"></div>
+        </li>
+        <li>The page will be updated automatically after new value is saved and transation is included into block.</li>
+    </ul>
+
+    Contract Source
+    <script src="simplestorage.js"></script>
+
+    HTML Source<br>
+    <a href="https://github.com/Mstar7264/Mstar.github.io/blob/master/DApp/SimpleStorage/simplestorage2.html">https://github.com/Mstar7264/Mstar.github.io/blob/master/DApp/SimpleStorage/simplestorage2.html</a>;
+    <br><br>
+    <p>
+        <a href="#"><i>My dApp by Mstar © 2018</i></a>
+    </p>
+</body>
+
+<script src="https://cdn.rawgit.com/ethereum/web3.js/develop/dist/web3.js"></script>
+<!-- script src="https://code.jquery.com/jquery-3.1.1.slim.min.js"></script -->
+<script>
+    var contractAddress;    
+    var abi = [{"constant":false,"inputs":[{"name":"x","type":"uint256"}],"name":"set","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},
+                {"constant":true,"inputs":[],"name":"get","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"}];
+    var simpleStorageContract;
+    var simplestorage;
+
+    window.addEventListener('load', function() {
+
+        // Checking if Web3 has been injected by the browser (Mist/MetaMask)
+        if (typeof web3 !== 'undefined') {
+            // Use Mist/MetaMask's provider
+            window.web3 = new Web3(web3.currentProvider);
+        } else {
+            console.log('No web3? You should consider trying MetaMask!')
+            // fallback - use your fallback strategy (local node / hosted node + in-dapp id mgmt / fail)
+            window.web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545"));
+        }
+        
+        // Now you can start your app & access web3 freely:
+        //startApp();
+    });
+
+    function setContractAddr() {
+
+        contractAddress = document.getElementById('contractAddr').value;
+        console.log("contractAddress :", contractAddress);
+
+        // Now you can start your app & access web3 freely:
+        startApp();
+    }
+
+    function startApp() {
+        simpleStorageContract = web3.eth.contract(abi);
+        simpleStorage = simpleStorageContract.at(contractAddress);
+        document.getElementById('contractAddr').innerHTML = getLink(contractAddress);
+        web3.eth.getAccounts(function(e,r){
+            document.getElementById('accountAddr').innerHTML = getLink(r[0]);
+        });
+
+        getValue();
+    }
+
+    function getLink(addr) {
+        return '<a target="_blank" href=https://testnet.etherscan.io/address/' + addr + '>' + addr +'</a>';
+    }
+
+    function getValue() {
+        simpleStorage.get(function(e,r){
+            document.getElementById('storedData').innerHTML=r.toNumber();
+        });
+
+        web3.eth.getBlockNumber(function(e,r){
+            document.getElementById('lastBlock').innerHTML = r;
+        });
+    }
+
+    function setValue() {
+
+        var newValue = document.getElementById('newValue').value;
+        var txid
+        simpleStorage.set(newValue, function(e,r){
+            document.getElementById('result').innerHTML = 'Transaction id: ' + r + '<span id="pending" style="color:red;">(Pending)</span>';
+            txid = r;
+        });
+        var filter = web3.eth.filter('latest');
+        filter.watch(function(e, r) {
+            getValue();
+            web3.eth.getTransaction(txid, function(e,r){
+                if (r != null && r.blockNumber > 0) {
+                    document.getElementById('pending').innerHTML = '(Saved Block: ' + r.blockNumber + ')';
+                    document.getElementById('pending').style.cssText ='color:green;';
+                    document.getElementById('storedData').style.cssText ='color:green; font-size:300%;';
+                    filter.stopWatching();
+                }
+            });
+        });
+    }   
+</script>
+</html>
